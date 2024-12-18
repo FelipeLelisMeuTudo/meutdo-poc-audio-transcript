@@ -26,7 +26,6 @@ uploaded_audio = st.file_uploader("Carregar um arquivo de áudio", type=['m4a', 
 custom_prompt = None
 custom_prompt = st.text_input("Insira um prompt personalizado:", value="Summarize the following audio transcription:")
 
-method = st.selectbox("Escolha o método de transcrição", ["speech_recognition", "toolkit"])
 
 if st.button("Gerar Resumo"):
     if uploaded_audio:
@@ -38,13 +37,8 @@ if st.button("Gerar Resumo"):
 
             st.markdown("Transcribing the audio...")
 
-            if method == "speech_recognition":
-                transcript = transcribe_with_speech_recognition(temp_file_path)
-            elif method == "toolkit":
-                with open(temp_file_path, "rb") as audio_file:
-                    transcript = transcribe_audio(api_key, audio_file)
-            else:
-                transcript = "Invalid method selected."
+            with open(temp_file_path, "rb") as audio_file:
+                transcript = transcribe_audio(api_key, audio_file)
 
             # Show the transcription
             st.markdown(f"###  Transcription:\n\n<details><summary>Click to view</summary><p><pre><code>{transcript}</code></pre></p></details>", unsafe_allow_html=True)

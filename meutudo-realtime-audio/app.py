@@ -113,20 +113,11 @@ class RealtimeApp(App[None]):
         super().__init__()
         self.connection = None
         self.session = None
-        self.client = AsyncOpenAI(api_key='sua_api_key')
+        self.client = AsyncOpenAI(api_key="api__open_key")
         self.audio_player = AudioPlayerAsync()
         self.last_audio_item_id = None
         self.should_send_audio = asyncio.Event()
         self.connected = asyncio.Event()
-        # Define o contexto constante
-        self.context_message = (
-            "A antecipação do Saque aniversário é uma ferramenta que permite o acesso aos valores de seu FGTS de maneira antecipada. "
-            "Com a meutudo, o processo de antecipação do saque aniversário é bastante simples! Você só precisa ter saldo sem bloqueio nas suas contas do FGTS. "
-            "A simulação e contratação devem ser feitas pelo app meutudo, mas primeiramente você precisa autorizar o banco consultar seu saldo.\n\n"
-            "No app do FGTS, vá na opção \"Autorizar Bancos a consultarem o seu FGTS\", escolha adicionar uma nova \"Instituição Financeira\" e procure por PARATI - Credito Financiamento e investimento S.A., "
-            "confirme a seleção e autorize a consulta do FGTS. Agora já pode acessar o app meutudo para verificar os valores disponíveis."
-        )
-        self.query_context = {"pergunta": "Quero emprestimo"}
 
     @override
     def compose(self) -> ComposeResult:
@@ -161,8 +152,30 @@ class RealtimeApp(App[None]):
                 
                 if event.type == "session.updated":
                     self.session = event.session
-                    continue
+                    prompt = """
+                        "A antecipação do Saque aniversário é uma ferramenta que permite o acesso aos valores de seu FGTS de maneira antecipada. "
+                        "Com a meutudo, o processo de antecipação do saque aniversário é bastante simples! Você só precisa ter saldo sem bloqueio nas suas contas do FGTS. "
+                        "A simulação e contratação devem ser feitas pelo app meutudo, mas primeiramente você precisa autorizar o banco consultar seu saldo.\n\n"
+                        "No app do FGTS, vá na opção \"Autorizar Bancos a consultarem o seu FGTS\", escolha adicionar uma nova \"Instituição Financeira\" e procure por PARATI - Credito Financiamento e investimento S.A., "
+                        "confirme a seleção e autorize a consulta do FGTS. Agora já pode acessar o app meutudo para verificar os valores disponíveis."
+                        """
+                    event = {
+                        "type": "response.create",
+                        "response": {
+                            # Setting to "none" indicates the response is out of band,
+                            # and will not be added to the default conversation
+                            "conversation": "none",
 
+                            # Set metadata to help identify responses sent back from the model
+                            "metadata": { "topic": "emprestimo fgts" },
+
+                            # Set any other available response fields
+                            "modalities": [ "text" ],
+                            "instructions": prompt,
+                        },
+                    }
+                    event.model_dump_json(event)
+                    continue 
                 if event.type == "response.audio.delta":
                     if event.item_id != self.last_audio_item_id:
                         self.audio_player.reset_frame_count()
