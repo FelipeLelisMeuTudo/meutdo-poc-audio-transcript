@@ -5,6 +5,7 @@ import os
 import streamlit as st
 import speech_recognition as sr
 from openai import OpenAI
+import re
 
 # Create a function to transcribe audio using Whisper
 def transcribe_audio(api_key, audio_file):
@@ -75,6 +76,15 @@ def call_gpt_streaming(api_key,prompt, model):
             placeholder.write(completion_text)  # Write the received text
     return completion_text
 
+def verify_response(summary):
+    regex = r'\b(empréstimo|saque|fgts)\b'
+
+    # Verifica se as palavras estão no texto
+    if re.search(regex, summary, re.IGNORECASE):
+        print("O texto contém uma das palavras-chave.")
+    else:
+        print("O texto não contém as palavras-chave.")
+
 def summarize_transcript(api_key, transcript, model, custom_prompt=None):
     openai.api_key = api_key
     client = OpenAI()
@@ -92,7 +102,7 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
 
     # Corrigido: acessar a resposta corretamente
     summary = response.choices[0].message.content
-    print("#############", summary)
+    verify_response(summary)
     return summary
 
 
