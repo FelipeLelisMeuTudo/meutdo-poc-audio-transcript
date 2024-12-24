@@ -1,8 +1,7 @@
 import streamlit as st
 import openai
-import speech_recognition as sr
 import os
-from utils import transcribe_with_speech_recognition, transcribe_audio, summarize_transcript
+from utils import transcribe_audio, summarize_transcript
 import theme
 
 # Streamlit app setup
@@ -22,7 +21,6 @@ uploaded_audio = st.file_uploader("Carregar um arquivo de áudio", type=['m4a', 
 
 custom_prompt = None
 custom_prompt = st.text_input("Insira um prompt personalizado:", value="Responda em português brasileiro")
-
 
 if st.button("Transcrever"):
     if uploaded_audio:

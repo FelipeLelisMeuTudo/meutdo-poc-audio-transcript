@@ -3,7 +3,6 @@ from io import BytesIO
 import tempfile
 import os
 import streamlit as st
-import speech_recognition as sr
 from openai import OpenAI
 import re
 
@@ -28,19 +27,6 @@ def transcribe_audio(api_key, audio_file):
 
     return transcript
 
-def transcribe_with_speech_recognition(audio_file_path):
-    """
-    Transcreve o áudio usando a biblioteca SpeechRecognition.
-    """
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(audio_file_path) as source:
-        audio_data = recognizer.record(source)
-        try:
-            return recognizer.recognize_google(audio_data, language="pt-BR")
-        except sr.UnknownValueError:
-            return "Não foi possível entender o áudio."
-        except sr.RequestError as e:
-            return f"Erro ao se comunicar com o serviço de reconhecimento: {e}"
 
 def call_gpt(api_key, prompt, model):
     openai.api_key = api_key
@@ -91,8 +77,22 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
     prompt = f"Please summarize the following audio transcription: {transcript}"
     if custom_prompt:
         prompt = f"{custom_prompt}\n\n{transcript}"
+    
+    # Prompt para extrair o contexto
+        prompt = f"""
+        Analise o seguinte texto e determine o contexto principal:
+        
+        Texto: "{transcript}"
+        
+        Retorne uma breve descrição do contexto em uma frase. Por exemplo: 
+        - "O usuário está pedindo um empréstimo."
+        - "O usuário está relatando um problema técnico."
+        - "O usuário está solicitando informações sobre um produto."
+        
+        Responda apenas com o contexto.
+        """
 
-    # Realize a chamada para a API de completions
+    """   Realize a chamada para a API de completions
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
@@ -103,7 +103,15 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
     # Corrigido: acessar a resposta corretamente
     summary = response.choices[0].message.content
     verify_response(summary)
-    return summary
+    return summary """
+
+    response = client.chat.ChatCompletion.create(
+            model=model,
+            messages=[{"role": "system", "content": "Você é um assistente que extrai contextos de conversas."},
+                      {"role": "user", "content": prompt}]
+        )
+        
+    return response.choices[0].message.content.strip()
 
 
 def generate_image_prompt(api_key, user_input):
