@@ -62,14 +62,58 @@ def call_gpt_streaming(api_key,prompt, model):
             placeholder.write(completion_text)  # Write the received text
     return completion_text
 
-def verify_response(summary):
-    regex = r'\b(empréstimo|saque|fgts)\b'
+def generate_response_with_link(context):
+    """
+    Gera uma resposta com o link relevante com base no contexto identificado, utilizando regex para maior flexibilidade.
 
-    # Verifica se as palavras estão no texto
-    if re.search(regex, summary, re.IGNORECASE):
-        print("O texto contém uma das palavras-chave.")
-    else:
-        print("O texto não contém as palavras-chave.")
+    Args:
+        context (str): Contexto principal identificado no áudio transcrito.
+
+    Returns:
+        str: Resposta com o link relevante incluído.
+    """
+    links_map = {
+        "senha": {
+            "link": "https://meutudo.go.link/senha",
+            "description": "troca de senha",
+            "regex": r"senha (não funciona|não entra|expirou|esqueci|minha senha|trocar|alterar)"
+        },
+        "cadastro": {
+            "link": "https://meutudo.go.link/cadastro",
+            "description": "alterar cadastro",
+            "regex": r"(alterar|corrigir|modificar) (dados pessoais|minhas informações|cadastro)"
+        },
+        "simulacao": {
+            "link": "https://meutudo.go.link/simulacao",
+            "description": "simular empréstimo FGTS",
+            "regex": r"(simulação|simular|preciso de|quero contratar) (empréstimo|empréstimo pessoal|contrato)"
+        },
+        "quitacao": {
+            "link": "https://meutudo.go.link/quitacao",
+            "description": "quitar contrato",
+            "regex": r"(quitar|quitação|pagar) (meu contrato|contrato)"
+        },
+        "portabilidade": {
+            "link": "https://meutudo.go.link/portabilidade",
+            "description": "portabilidade de contrato",
+            "regex": r"(portar|portabilidade|trazer) (meu contrato|contrato para meutudo)"
+        }
+    }
+
+    context = context.lower()
+
+    for key, value in links_map.items():
+        if re.search(value["regex"], context):
+            return (
+                f"Entendi que você precisa de ajuda com '{value['description']}'. "
+                f"Você pode acessar mais informações ou realizar a ação através deste link: {value['link']}"
+            )
+
+    return (
+        "Infelizmente, não consegui identificar um link relevante para ajudá-lo com base no contexto fornecido. "
+        "Por favor, forneça mais detalhes sobre sua solicitação."
+    )
+
 
 def summarize_transcript(api_key, transcript, model, custom_prompt=None):
     openai.api_key = api_key
@@ -78,8 +122,7 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
     if custom_prompt:
         prompt = f"{custom_prompt}\n\n{transcript}"
     
-    # Prompt para extrair o contexto
-        prompt = f"""
+    prompt = f"""
         Analise o seguinte texto e determine o contexto principal:
         
         Texto: "{transcript}"
@@ -90,28 +133,16 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
         - "O usuário está solicitando informações sobre um produto."
         
         Responda apenas com o contexto.
-        """
-
-    """   Realize a chamada para a API de completions
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=150,
-    )
-
-    # Corrigido: acessar a resposta corretamente
-    summary = response.choices[0].message.content
-    verify_response(summary)
-    return summary """
+    """
 
     response = client.chat.ChatCompletion.create(
             model=model,
             messages=[{"role": "system", "content": "Você é um assistente que extrai contextos de conversas."},
                       {"role": "user", "content": prompt}]
         )
-        
-    return response.choices[0].message.content.strip()
+    context = response.choices[0].message.content
+    result_with_link = generate_response_with_link(context)
+    return result_with_link
 
 
 def generate_image_prompt(api_key, user_input):
