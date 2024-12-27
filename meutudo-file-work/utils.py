@@ -6,10 +6,9 @@ import streamlit as st
 from openai import OpenAI
 import re
 
-# Create a function to transcribe audio using Whisper
 def transcribe_audio(api_key, audio_file):
     openai.api_key = api_key
-    client = OpenAI()
+
     with BytesIO(audio_file.read()) as audio_bytes:
         # Get the extension of the uploaded file
         file_extension = os.path.splitext(audio_file.name)[-1]
@@ -20,7 +19,7 @@ def transcribe_audio(api_key, audio_file):
             temp_audio_file.seek(0)  # Move the file pointer to the beginning of the file
             
             # Transcribe the temporary audio file
-            transcript = client.audio.transcriptions.create(
+            transcript = openai.audio.transcriptions.create(
                 model="whisper-1", 
                 file=audio_file
             )
@@ -30,8 +29,7 @@ def transcribe_audio(api_key, audio_file):
 
 def call_gpt(api_key, prompt, model):
     openai.api_key = api_key
-    client = OpenAI()
-    response = client.chat.completions.create(
+    response = openai.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5,
@@ -62,9 +60,10 @@ def call_gpt_streaming(api_key,prompt, model):
             placeholder.write(completion_text)  # Write the received text
     return completion_text
 
+
 def generate_response_with_link(context):
     """
-    Gera uma resposta com o link relevante com base no contexto identificado, utilizando regex para maior flexibilidade.
+    Gera uma resposta com o link relevante com base no contexto identificado, utilizando regex expandida.
 
     Args:
         context (str): Contexto principal identificado no áudio transcrito.
@@ -72,31 +71,32 @@ def generate_response_with_link(context):
     Returns:
         str: Resposta com o link relevante incluído.
     """
+
     links_map = {
         "senha": {
             "link": "https://meutudo.go.link/senha",
             "description": "troca de senha",
-            "regex": r"senha (não funciona|não entra|expirou|esqueci|minha senha|trocar|alterar)"
+            "regex": r"senha (não funciona|não entra|expirou|esqueci|minha senha|trocar|alterar|problema)"
         },
         "cadastro": {
             "link": "https://meutudo.go.link/cadastro",
             "description": "alterar cadastro",
-            "regex": r"(alterar|corrigir|modificar) (dados pessoais|minhas informações|cadastro)"
+            "regex": r"(alterar|corrigir|modificar|atualizar) (dados pessoais|minhas informações|cadastro)"
         },
         "simulacao": {
             "link": "https://meutudo.go.link/simulacao",
             "description": "simular empréstimo FGTS",
-            "regex": r"(simulação|simular|preciso de|quero contratar) (empréstimo|empréstimo pessoal|contrato)"
+            "regex": r"(simulação|simular|preciso de|quero contratar|empréstimo|dinheiro|reforma|gastos|contratar)"
         },
         "quitacao": {
             "link": "https://meutudo.go.link/quitacao",
             "description": "quitar contrato",
-            "regex": r"(quitar|quitação|pagar) (meu contrato|contrato)"
+            "regex": r"(quitar|quitação|pagar) (meu contrato|contrato|dívida)"
         },
         "portabilidade": {
             "link": "https://meutudo.go.link/portabilidade",
             "description": "portabilidade de contrato",
-            "regex": r"(portar|portabilidade|trazer) (meu contrato|contrato para meutudo)"
+            "regex": r"(portar|portabilidade|trazer|transferir) (meu contrato|contrato para meutudo)"
         }
     }
 
@@ -116,8 +116,9 @@ def generate_response_with_link(context):
 
 
 def summarize_transcript(api_key, transcript, model, custom_prompt=None):
-    openai.api_key = api_key
-    client = OpenAI()
+    client = OpenAI(
+        api_key=api_key,  # This is the default and can be omitted
+    )
     prompt = f"Please summarize the following audio transcription: {transcript}"
     if custom_prompt:
         prompt = f"{custom_prompt}\n\n{transcript}"
@@ -135,12 +136,13 @@ def summarize_transcript(api_key, transcript, model, custom_prompt=None):
         Responda apenas com o contexto.
     """
 
-    response = client.chat.ChatCompletion.create(
+    response = client.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": "Você é um assistente que extrai contextos de conversas."},
                       {"role": "user", "content": prompt}]
         )
     context = response.choices[0].message.content
+    print(context)
     result_with_link = generate_response_with_link(context)
     return result_with_link
 
